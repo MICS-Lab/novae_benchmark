@@ -1,6 +1,6 @@
 # Install
 
-## SEDR
+## SEDR (Quentin)
 
 [Github](https://github.com/JinmiaoChenLab/SEDR), [Docs](https://sedr.readthedocs.io/en/latest/Installation.html)
 
@@ -15,7 +15,7 @@ python setup.py build
 python setup.py.install
 ```
 
-## STAGATE
+## STAGATE (Quentin)
 
 [Github](https://github.com/QIFEIDKN/STAGATE_pyG), [Docs](https://stagate.readthedocs.io/en/latest/Installation_pyG.html)
 
@@ -30,7 +30,7 @@ python setup.py build
 python setup.py install
 ```
 
-## GraphST
+## GraphST ()
 
 [Github](https://github.com/JinmiaoChenLab/GraphST), [Docs](https://deepst-tutorials.readthedocs.io/en/latest/)
 
@@ -49,7 +49,7 @@ python setup.py build
 python setup.py install
 ```
 
-## SpaceFlow
+## SpaceFlow (Hakim)
 
 [Github](https://github.com/hongleir/SpaceFlow), Docs
 
