@@ -11,6 +11,7 @@ scanpy = ">=1.9.8"
 lightning = ">=2.2.1"
 torch = ">=2.2.1"
 torch-geometric = ">=2.5.2"
+rpy2 = "^3.5.16"
 
 [tool.poetry.group.dev.dependencies]
 black = ">=22.8.0"
