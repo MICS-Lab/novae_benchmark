@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 import scanpy as sc
-import STAGATE_pyG as STAGATE
-import torch
 from anndata import AnnData
+
+from . import STAGATE
 
 
 class Model:
@@ -32,18 +32,13 @@ class STAGATEModel(Model):
         if batch_key is None:
             STAGATE.Cal_Spatial_Net(adata, rad_cutoff=self.RAD_CUTOFF)
         else:
-            adatas = [
-                adata[adata.obs[batch_key] == b].copy()
-                for b in adata.obs[batch_key].unique()
-            ]
+            adatas = [adata[adata.obs[batch_key] == b].copy() for b in adata.obs[batch_key].unique()]
             for adata_ in adatas:
                 print("Batch:", adata_.obs[batch_key][0])
                 STAGATE.Cal_Spatial_Net(adata_, rad_cutoff=self.RAD_CUTOFF)
 
             adata = sc.concat(adatas)
-            adata.uns["Spatial_Net"] = pd.concat(
-                [adata_.uns["Spatial_Net"] for adata_ in adatas]
-            )
+            adata.uns["Spatial_Net"] = pd.concat([adata_.uns["Spatial_Net"] for adata_ in adatas])
             print("\nConcatenated:", adata)
 
         adata = STAGATE.train_STAGATE(adata, key_added="STAGATE", device=device)

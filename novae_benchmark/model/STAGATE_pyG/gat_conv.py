@@ -1,17 +1,16 @@
-from typing import Union, Tuple, Optional
-from torch_geometric.typing import (OptPairTensor, Adj, Size, NoneType,
-                                    OptTensor)
+from typing import Optional, Tuple, Union
 
 import torch
-from torch import Tensor
-import torch.nn.functional as F
-from torch.nn import Parameter
 import torch.nn as nn
-from torch_sparse import SparseTensor, set_diag
-from torch_geometric.nn.dense.linear import Linear
+import torch.nn.functional as F
+from torch import Tensor
+from torch.nn import Parameter
 from torch_geometric.nn.conv import MessagePassing
-from torch_geometric.utils import remove_self_loops, add_self_loops, softmax
 
+# from torch_sparse import SparseTensor, set_diag
+from torch_geometric.nn.dense.linear import Linear
+from torch_geometric.typing import Adj, NoneType, OptPairTensor, OptTensor, Size
+from torch_geometric.utils import add_self_loops, remove_self_loops, softmax
 
 
 class GATConv(MessagePassing):
@@ -58,13 +57,22 @@ class GATConv(MessagePassing):
         **kwargs (optional): Additional arguments of
             :class:`torch_geometric.nn.conv.MessagePassing`.
     """
+
     _alpha: OptTensor
 
-    def __init__(self, in_channels: Union[int, Tuple[int, int]],
-                 out_channels: int, heads: int = 1, concat: bool = True,
-                 negative_slope: float = 0.2, dropout: float = 0.0,
-                 add_self_loops: bool = True, bias: bool = True, **kwargs):
-        kwargs.setdefault('aggr', 'add')
+    def __init__(
+        self,
+        in_channels: Union[int, Tuple[int, int]],
+        out_channels: int,
+        heads: int = 1,
+        concat: bool = True,
+        negative_slope: float = 0.2,
+        dropout: float = 0.0,
+        add_self_loops: bool = True,
+        bias: bool = True,
+        **kwargs,
+    ):
+        kwargs.setdefault("aggr", "add")
         super(GATConv, self).__init__(node_dim=0, **kwargs)
 
         self.in_channels = in_channels
@@ -91,7 +99,6 @@ class GATConv(MessagePassing):
         nn.init.xavier_normal_(self.lin_src.data, gain=1.414)
         self.lin_dst = self.lin_src
 
-
         # The learnable parameters to compute attention coefficients:
         self.att_src = Parameter(torch.Tensor(1, heads, out_channels))
         self.att_dst = Parameter(torch.Tensor(1, heads, out_channels))
@@ -117,12 +124,15 @@ class GATConv(MessagePassing):
     #     glorot(self.att_dst)
     #     # zeros(self.bias)
 
-    def forward(self, x: Union[Tensor, OptPairTensor], edge_index: Adj,
-                size: Size = None, return_attention_weights=None, attention=True, tied_attention = None):
-        # type: (Union[Tensor, OptPairTensor], Tensor, Size, NoneType) -> Tensor  # noqa
-        # type: (Union[Tensor, OptPairTensor], SparseTensor, Size, NoneType) -> Tensor  # noqa
-        # type: (Union[Tensor, OptPairTensor], Tensor, Size, bool) -> Tuple[Tensor, Tuple[Tensor, Tensor]]  # noqa
-        # type: (Union[Tensor, OptPairTensor], SparseTensor, Size, bool) -> Tuple[Tensor, SparseTensor]  # noqa
+    def forward(
+        self,
+        x: Union[Tensor, OptPairTensor],
+        edge_index: Adj,
+        size: Size = None,
+        return_attention_weights=None,
+        attention=True,
+        tied_attention=None,
+    ):
         r"""
         Args:
             return_attention_weights (bool, optional): If set to :obj:`True`,
@@ -161,7 +171,6 @@ class GATConv(MessagePassing):
         else:
             alpha = tied_attention
 
-
         if self.add_self_loops:
             if isinstance(edge_index, Tensor):
                 # We only want to add self-loops for nodes that appear both as
@@ -172,8 +181,10 @@ class GATConv(MessagePassing):
                 num_nodes = min(size) if size is not None else num_nodes
                 edge_index, _ = remove_self_loops(edge_index)
                 edge_index, _ = add_self_loops(edge_index, num_nodes=num_nodes)
-            elif isinstance(edge_index, SparseTensor):
-                edge_index = set_diag(edge_index)
+            else:
+                raise ValueError(f"Received invalid type {type(edge_index)}")
+            # elif isinstance(edge_index, SparseTensor):
+            #     edge_index = set_diag(edge_index)
 
         # propagate_type: (x: OptPairTensor, alpha: OptPairTensor)
         out = self.propagate(edge_index, x=x, alpha=alpha, size=size)
@@ -193,19 +204,21 @@ class GATConv(MessagePassing):
         if isinstance(return_attention_weights, bool):
             if isinstance(edge_index, Tensor):
                 return out, (edge_index, alpha)
-            elif isinstance(edge_index, SparseTensor):
-                return out, edge_index.set_value(alpha, layout='coo')
+            else:
+                raise ValueError(f"Received invalid type {type(edge_index)}")
+            # elif isinstance(edge_index, SparseTensor):
+            #     return out, edge_index.set_value(alpha, layout="coo")
         else:
             return out
 
-    def message(self, x_j: Tensor, alpha_j: Tensor, alpha_i: OptTensor,
-                index: Tensor, ptr: OptTensor,
-                size_i: Optional[int]) -> Tensor:
+    def message(
+        self, x_j: Tensor, alpha_j: Tensor, alpha_i: OptTensor, index: Tensor, ptr: OptTensor, size_i: Optional[int]
+    ) -> Tensor:
         # Given egel-level attention coefficients for source and target nodes,
         # we simply need to sum them up to "emulate" concatenation:
         alpha = alpha_j if alpha_i is None else alpha_j + alpha_i
 
-        #alpha = F.leaky_relu(alpha, self.negative_slope)
+        # alpha = F.leaky_relu(alpha, self.negative_slope)
         alpha = torch.sigmoid(alpha)
         alpha = softmax(alpha, index, ptr, size_i)
         self._alpha = alpha  # Save for later use.
@@ -213,6 +226,4 @@ class GATConv(MessagePassing):
         return x_j * alpha.unsqueeze(-1)
 
     def __repr__(self):
-        return '{}({}, {}, heads={})'.format(self.__class__.__name__,
-                                             self.in_channels,
-                                             self.out_channels, self.heads)
+        return "{}({}, {}, heads={})".format(self.__class__.__name__, self.in_channels, self.out_channels, self.heads)

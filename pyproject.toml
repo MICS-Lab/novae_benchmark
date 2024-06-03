@@ -1,0 +1,50 @@
+[tool.poetry]
+name = "novae_benchmark"
+version = "0.0.1"
+description = "Novae benchmark"
+authors = ["Quentin Blampey <quentin.blampey@centralesupelec.fr>"]
+packages = [{ include = "novae_benchmark" }]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.13"
+scanpy = ">=1.9.8"
+lightning = ">=2.2.1"
+torch = ">=2.2.1"
+torch-geometric = ">=2.5.2"
+
+[tool.poetry.group.dev.dependencies]
+black = ">=22.8.0"
+flake8 = ">=7.0.0"
+isort = ">=5.10.1"
+ipykernel = ">=6.22.0"
+ipywidgets = ">=8.1.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+
+[tool.black]
+line-length = 120
+include = '\.pyi?$'
+exclude = '''
+/(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+'''
+
+[tool.isort]
+profile = "black"
+skip_glob = ["*/__init__.py"]
