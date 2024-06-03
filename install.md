@@ -30,7 +30,7 @@ python setup.py build
 python setup.py install
 ```
 
-## GraphST ()
+## GraphST (Hakim)
 
 [Github](https://github.com/JinmiaoChenLab/GraphST), [Docs](https://deepst-tutorials.readthedocs.io/en/latest/)
 

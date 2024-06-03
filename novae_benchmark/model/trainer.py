@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 from anndata import AnnData
+from sklearn.decomposition import PCA
 
-from . import STAGATE
+from . import SEDR, STAGATE
 
 
 class Model:
@@ -12,17 +13,29 @@ class Model:
         self.model_name = model_name
         self.hidden_dim = hidden_dim
 
+    def preprocess(self, adata: AnnData):
+        adata.X = adata.layers["count"]
+        sc.pp.normalize_total(adata)
+        sc.pp.log1p(adata)
+        return adata
+
     def train(self, adata: AnnData, batch_key: str | None, device: str = "cpu") -> None:
-        # adata should be preprocessed: normalized + log1p
         raise NotImplementedError
 
     def inference(self, adata: AnnData) -> np.ndarray:
         assert self.model_name in adata.obsm.keys()
 
-    def __call__(self, adata: AnnData) -> np.ndarray:
-        self.train(adata)
+    def cluster(self, adata: AnnData, n_clusters: int):
+        raise NotImplementedError
+
+    def __call__(
+        self, adata: AnnData, batch_key: str | None, n_clusters: int, device: str = "cpu"
+    ) -> tuple[np.ndarray, pd.Series]:
+        self.preprocess(adata)
+        self.train(adata, batch_key, device)
         self.inference(adata)
-        return adata.obsm[self.model_name]
+        self.cluster(adata, n_clusters)
+        return adata.obsm[self.model_name], adata.obs[self.model_name]
 
 
 class STAGATEModel(Model):
@@ -41,12 +54,42 @@ class STAGATEModel(Model):
             adata.uns["Spatial_Net"] = pd.concat([adata_.uns["Spatial_Net"] for adata_ in adatas])
             print("\nConcatenated:", adata)
 
-        adata = STAGATE.train_STAGATE(adata, key_added="STAGATE", device=device)
+        adata = STAGATE.train_STAGATE(adata, key_added=self.model_name, device=device)
         return adata
+
+    def cluster(self, adata: AnnData, n_clusters: int):
+        STAGATE.mclust_R(adata, used_obsm=self.model_name, num_cluster=n_clusters)
+        adata.obs[self.model_name] = adata.obs["m_clust"]
+
+
+class SEDRModel(Model):
+    def preprocess(self, adata: AnnData):
+        adata.X = adata.layers["count"]
+        sc.pp.normalize_total(adata, target_sum=1e6)
+        sc.pp.scale(adata)
+
+        adata_X = PCA(n_components=200, random_state=42).fit_transform(adata.X)
+        adata.obsm["X_pca"] = adata_X
+
+    def cluster(self, adata: AnnData, n_clusters: int):
+        SEDR.mclust_R(adata, n_clusters, use_rep=self.model_name, key_added=self.model_name)
+
+    def train(self, adata: AnnData, batch_key: str | None, device: str = "cpu"):
+        graph_dict = SEDR.graph_construction(adata, 6)
+
+        sedr_net = SEDR.Sedr(adata.obsm["X_pca"], graph_dict)
+        using_dec = True
+        if using_dec:
+            sedr_net.train_with_dec()
+        else:
+            sedr_net.train_without_dec()
+        sedr_feat, _, _, _ = sedr_net.process()
+        adata.obsm[self.model_name] = sedr_feat
 
 
 MODEL_DICT = {
     "STAGATE": STAGATEModel,
+    "SEDR": SEDRModel,
 }
 
 
