@@ -4,7 +4,7 @@ import scanpy as sc
 from anndata import AnnData
 from sklearn.decomposition import PCA
 
-from . import SEDR, STAGATE
+from . import SEDR, STAGATE, SpaceFlow
 
 DEFAULT_N_CLUSTERS = 7
 
@@ -121,9 +121,22 @@ class SEDRModel(Model):
         adata.obsm[self.model_name] = sedr_feat
 
 
+class SpaceFlowModel(Model):
+    N_TOP_GENES = 200
+
+    def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
+        spaceflow_net = SpaceFlow.Spaceflow(adata=adata)
+        spaceflow_net.preprocessing_data(n_top_genes=self.N_TOP_GENES)
+        spaceflow_net.train(
+         z_dim=self.hidden_dim, 
+         epochs=2)
+
+
+
 MODEL_DICT = {
     "STAGATE": STAGATEModel,
     "SEDR": SEDRModel,
+    "SpaceFlow": SpaceFlowModel
 }
 
 
