@@ -17,9 +17,9 @@ class Model:
 
     def preprocess(self, adata: AnnData):
         """
-        Preprocess the data before training the model. Raw counts can be found in `adata.layers["count"]`
+        Preprocess the data before training the model. Raw counts can be found in `adata.layers["counts"]`
         """
-        adata.X = adata.layers["count"]
+        adata.X = adata.layers["counts"]
         sc.pp.normalize_total(adata)
         sc.pp.log1p(adata)
 
@@ -98,7 +98,7 @@ class STAGATEModel(Model):
 
 class SEDRModel(Model):
     def preprocess(self, adata: AnnData):
-        adata.X = adata.layers["count"]
+        adata.X = adata.layers["counts"]
         sc.pp.normalize_total(adata, target_sum=1e6)
         sc.pp.scale(adata)
 
