@@ -127,16 +127,19 @@ class SpaceFlowModel(Model):
     def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
         spaceflow_net = SpaceFlow.Spaceflow(adata=adata)
         spaceflow_net.preprocessing_data(n_top_genes=self.N_TOP_GENES)
-        spaceflow_net.train(
-         z_dim=self.hidden_dim, 
-         epochs=2)
+        spaceflow_net.train(z_dim=self.hidden_dim, epochs=2)
 
+
+class GraphSTModel(Model):
+    def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
+        raise NotImplementedError
 
 
 MODEL_DICT = {
     "STAGATE": STAGATEModel,
     "SEDR": SEDRModel,
-    "SpaceFlow": SpaceFlowModel
+    "SpaceFlow": SpaceFlowModel,
+    "GraphST": GraphSTModel,
 }
 
 
