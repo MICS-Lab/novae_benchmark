@@ -4,7 +4,7 @@ import scanpy as sc
 from anndata import AnnData
 from sklearn.decomposition import PCA
 
-from . import SEDR, STAGATE, SpaceFlow
+from . import SEDR, STAGATE, SpaceFlow, cluster_utils
 from GraphST import GraphST
 
 DEFAULT_N_CLUSTERS = 7
@@ -38,11 +38,12 @@ class Model:
         """
         assert self.model_name in adata.obsm.keys()
 
-    def cluster(self, adata: AnnData, n_clusters: int = DEFAULT_N_CLUSTERS):
+    def cluster(self, adata: AnnData, n_clusters: int = DEFAULT_N_CLUSTERS, method: str = "mclust",):
         """
         Clusters the data. The output should be stored in `adata.obs[self.model_name]`.
         """
-        raise NotImplementedError
+        cluster_utils.clustering(adata=adata, model_name=self.model_name, n_clusters=n_clusters)
+
 
     def __call__(
         self,
@@ -128,7 +129,8 @@ class SpaceFlowModel(Model):
     def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
         spaceflow_net = SpaceFlow.Spaceflow(adata=adata)
         spaceflow_net.preprocessing_data(n_top_genes=self.N_TOP_GENES)
-        adata = spaceflow_net.train(z_dim=self.hidden_dim, epochs=2)
+        spaceflow_embedding = spaceflow_net.train(z_dim=self.hidden_dim, epochs=2)
+        adata.obsm[self.model_name] = spaceflow_embedding
 
 
 class GraphSTModel(Model):
@@ -137,13 +139,6 @@ class GraphSTModel(Model):
         adata = graphst_net.train()
         return adata
     
-    def refine_clustering(self, adata: AnnData, n_clusters: int = DEFAULT_N_CLUSTERS, radius: int = 50):
-        from GraphST.utils import clustering
-        tool = 'mclust'
-        if tool == 'mclust':
-            clustering(adata, n_clusters, radius=radius, method=tool, refinement=True)
-        elif tool in ['leiden', 'louvain']:
-            clustering(adata, n_clusters, radius=radius, method=tool, start=0.1, end=2.0, increment=0.01, refinement=False)
 
 
 MODEL_DICT = {

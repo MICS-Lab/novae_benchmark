@@ -287,8 +287,8 @@ class Spaceflow(object):
         embedding = z.cpu().detach().numpy()
 
         self.embedding = embedding
-        self.adata_preprocessed.obsm['emb'] = self.embedding
-        return self.adata_preprocessed
+        #self.adata_preprocessed.obsm['emb'] = self.embedding
+        return self.embedding
 
     def segmentation(self, domain_label_save_filepath="./domains.tsv", n_neighbors=50, resolution=1.0):
         """
