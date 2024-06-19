@@ -5,6 +5,7 @@ from anndata import AnnData
 from sklearn.decomposition import PCA
 
 from . import SEDR, STAGATE, SpaceFlow
+from GraphST import GraphST
 
 DEFAULT_N_CLUSTERS = 7
 
@@ -127,12 +128,22 @@ class SpaceFlowModel(Model):
     def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
         spaceflow_net = SpaceFlow.Spaceflow(adata=adata)
         spaceflow_net.preprocessing_data(n_top_genes=self.N_TOP_GENES)
-        spaceflow_net.train(z_dim=self.hidden_dim, epochs=2)
+        adata = spaceflow_net.train(z_dim=self.hidden_dim, epochs=2)
 
 
 class GraphSTModel(Model):
     def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
-        raise NotImplementedError
+        graphst_net = GraphST.GraphST(adata=adata, device=device)
+        adata = graphst_net.train()
+        return adata
+    
+    def refine_clustering(self, adata: AnnData, n_clusters: int = DEFAULT_N_CLUSTERS, radius: int = 50):
+        from GraphST.utils import clustering
+        tool = 'mclust'
+        if tool == 'mclust':
+            clustering(adata, n_clusters, radius=radius, method=tool, refinement=True)
+        elif tool in ['leiden', 'louvain']:
+            clustering(adata, n_clusters, radius=radius, method=tool, start=0.1, end=2.0, increment=0.01, refinement=False)
 
 
 MODEL_DICT = {

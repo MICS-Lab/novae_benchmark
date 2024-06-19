@@ -181,7 +181,7 @@ class Spaceflow(object):
 
         return nx.to_scipy_sparse_matrix(extended_graph, format='csr')
 
-    def train(self, embedding_save_filepath="embeddings/embedding_spaceflow.tsv", spatial_regularization_strength=0.1, z_dim=50, lr=1e-3, epochs=1000, max_patience=50, min_stop=100, random_seed=42, gpu=0, regularization_acceleration=True, edge_subset_sz=1000000):
+    def train(self, spatial_regularization_strength=0.1, z_dim=50, lr=1e-3, epochs=1000, max_patience=50, min_stop=100, random_seed=42, gpu=0, regularization_acceleration=True, edge_subset_sz=1000000):
         adata_preprocessed, spatial_graph = self.adata_preprocessed, self.spatial_graph
         """
         Training the Deep GraphInfomax Model
@@ -285,14 +285,10 @@ class Spaceflow(object):
 
         z, _, _ = model(expr, edge_list)
         embedding = z.cpu().detach().numpy()
-        save_dir = os.path.dirname(embedding_save_filepath)
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        np.savetxt(embedding_save_filepath, embedding[:, :], delimiter="\t")
-        print(f"Training complete!\nEmbedding is saved at {embedding_save_filepath}")
 
         self.embedding = embedding
-        return embedding
+        self.adata_preprocessed.obsm['emb'] = self.embedding
+        return self.adata_preprocessed
 
     def segmentation(self, domain_label_save_filepath="./domains.tsv", n_neighbors=50, resolution=1.0):
         """
