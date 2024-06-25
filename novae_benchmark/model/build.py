@@ -4,10 +4,10 @@ import scanpy as sc
 from anndata import AnnData
 from sklearn.decomposition import PCA
 
-from . import SEDR, STAGATE, SpaceFlow, cluster_utils
-from GraphST import GraphST
+from . import SEDR, STAGATE, SpaceFlow, cluster_utils, GraphST
 
 DEFAULT_N_CLUSTERS = 7
+DEFAULT_RADIUS_CLUSTERS = 50
 
 
 class Model:
@@ -32,17 +32,14 @@ class Model:
         """
         raise NotImplementedError
 
-    def inference(self, adata: AnnData) -> np.ndarray:
-        """
-        Runs inference. The output should be stored in `adata.obsm[self.model_name]`.
-        """
-        assert self.model_name in adata.obsm.keys()
-
-    def cluster(self, adata: AnnData, n_clusters: int = DEFAULT_N_CLUSTERS, method: str = "mclust",):
+    def cluster(self, adata: AnnData, n_clusters: int = DEFAULT_N_CLUSTERS,
+                radius : int = DEFAULT_RADIUS_CLUSTERS, method: str = "mclust", 
+                pca: bool = False):
         """
         Clusters the data. The output should be stored in `adata.obs[self.model_name]`.
         """
-        cluster_utils.clustering(adata=adata, model_name=self.model_name, n_clusters=n_clusters)
+        cluster_utils.clustering(adata=adata, model_name=self.model_name, 
+                                 n_clusters=n_clusters, method=method, radius=radius, pca=pca)
 
 
     def __call__(
@@ -61,7 +58,6 @@ class Model:
         """
         self.preprocess(adata)
         self.train(adata, batch_key=batch_key, device=device, fast_dev_run=fast_dev_run)
-        self.inference(adata)
         self.cluster(adata, n_clusters)
 
         adata.obs[self.model_name] = adata.obs[self.model_name].astype("category")
@@ -91,11 +87,10 @@ class STAGATEModel(Model):
         adata = STAGATE.train_STAGATE(
             adata, key_added=self.model_name, device=device, n_epochs=2 if fast_dev_run else 1000
         )
-        return adata
 
-    def cluster(self, adata: AnnData, n_clusters: int = DEFAULT_N_CLUSTERS):
-        STAGATE.mclust_R(adata, used_obsm=self.model_name, num_cluster=n_clusters)
-        adata.obs[self.model_name] = adata.obs["mclust"]
+    #def cluster(self, adata: AnnData, n_clusters: int = DEFAULT_N_CLUSTERS):
+    #    STAGATE.mclust_R(adata, used_obsm=self.model_name, num_cluster=n_clusters)
+    #    adata.obs[self.model_name] = adata.obs["mclust"]
 
 
 class SEDRModel(Model):
@@ -107,8 +102,8 @@ class SEDRModel(Model):
         adata_X = PCA(n_components=200, random_state=42).fit_transform(adata.X)
         adata.obsm["X_pca"] = adata_X
 
-    def cluster(self, adata: AnnData, n_clusters: int):
-        SEDR.mclust_R(adata, n_clusters, use_rep=self.model_name, key_added=self.model_name)
+    #def cluster(self, adata: AnnData, n_clusters: int):
+    #    SEDR.mclust_R(adata, n_clusters, use_rep=self.model_name, key_added=self.model_name)
 
     def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
         graph_dict = SEDR.graph_construction(adata, 6)
@@ -126,18 +121,20 @@ class SEDRModel(Model):
 class SpaceFlowModel(Model):
     N_TOP_GENES = 200
 
+    def preprocess(self, adata: AnnData):
+        pass
+
     def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
         spaceflow_net = SpaceFlow.Spaceflow(adata=adata)
         spaceflow_net.preprocessing_data(n_top_genes=self.N_TOP_GENES)
-        spaceflow_embedding = spaceflow_net.train(z_dim=self.hidden_dim, epochs=2)
+        spaceflow_embedding = spaceflow_net.train(z_dim=self.hidden_dim, epochs=2 if fast_dev_run else 1000)
         adata.obsm[self.model_name] = spaceflow_embedding
 
 
 class GraphSTModel(Model):
     def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
-        graphst_net = GraphST.GraphST(adata=adata, device=device)
+        graphst_net = GraphST.Graphst(adata=adata, device=device, epochs=2 if fast_dev_run else 1000)
         adata = graphst_net.train()
-        return adata
     
 
 
