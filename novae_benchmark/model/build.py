@@ -53,7 +53,6 @@ class Model:
         batch_key: str | None = None,
         device: str = "cpu",
         fast_dev_run: bool = False,
-        multi_slide:bool = False,
     ) -> tuple[np.ndarray, pd.Series]:
         """
         Runs all steps, i.e preprocessing -> training -> inference -> clustering.
@@ -61,17 +60,17 @@ class Model:
         Returns:
             A numpy array of shape (n_cells, hidden_dim) and a pandas Series with the cluster labels.
         """
-        print("--------------- {}: Preprocessing Started-------------------".format(self.model_name))
+        print("--------------- {}: Preprocessing Started-------------------\n".format(self.model_name))
         self.preprocess(adata)
-        print("--------------- {}: Preprocessing Finished-------------------".format(self.model_name))
-        print("--------------- {}: Training Started-------------------".format(self.model_name))
+        print("--------------- {}: Preprocessing Finished-------------------\n".format(self.model_name))
+        print("--------------- {}: Training Started-------------------\n".format(self.model_name))
         self.train(adata, batch_key=batch_key, device=device, fast_dev_run=fast_dev_run)
-        print("--------------- {}: Training Finished-------------------".format(self.model_name))
-        print("--------------- {}: Clustering Started-------------------".format(self.model_name))
+        print("--------------- {}: Training Finished-------------------\n".format(self.model_name))
+        print("--------------- {}: Clustering Started-------------------\n".format(self.model_name))
         self.cluster(adata, n_clusters)
-        print("--------------- {}: Clustering Finished-------------------".format(self.model_name))
+        print("--------------- {}: Clustering Finished-------------------\n".format(self.model_name))
         self.evaluate(adata, batch_key, n_clusters)
-        print("--------------- {}: Evaluation completed-------------------".format(self.model_name))
+        print("--------------- {}: Evaluation completed-------------------\n".format(self.model_name))
         print(self.model_performances)
 
 
@@ -135,7 +134,7 @@ class SpaceFlowModel(Model):
 
     def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
         spaceflow_net = SpaceFlow.Spaceflow(adata=adata)
-        spaceflow_net.preprocessing_data(n_top_genes=self.N_TOP_GENES)
+        spaceflow_net.preprocessing_data(n_top_genes=self.N_TOP_GENES, batch_key=batch_key)
         spaceflow_embedding = spaceflow_net.train(z_dim=self.hidden_dim, epochs=2 if fast_dev_run else 1000)
         adata.obsm[self.model_name] = spaceflow_embedding
 

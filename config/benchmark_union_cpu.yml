@@ -1,0 +1,17 @@
+dataset:
+  data_dir: '../../data/spatial'
+  metadata-file: 'metadata_2024_06_21.csv'
+  tissues: ['ovarian']
+  mode: 'union'
+
+params:
+  model_names: ['SEDR', 'STAGATE', 'SpaceFlow', 'GraphST']
+  hidden_dim: 64
+  batch_key: 'ID'
+  device: 'cpu'
+  fast_dev_run: True
+  n_clusters: 7
+
+  
+
+

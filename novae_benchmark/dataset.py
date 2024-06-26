@@ -1,5 +1,4 @@
 import os
-import numpy as np
 import pandas as pd
 import scanpy as sc
 import anndata
@@ -10,7 +9,7 @@ class AnnDataset:
         self.metadata_file = os.path.join(data_dir, metadata_filename)
         self.metadata = pd.read_csv(self.metadata_file)
         
-    def load_data(self, tissue_types, use_common_genes=True, multi_slide=False):
+    def load_data(self, tissue_types, mode='union'):
         anndata_list = []
         anndata_list_original = []
         
@@ -22,7 +21,6 @@ class AnnDataset:
                 adata = sc.read_h5ad(file_path)
                 anndata_list_original.append(adata)
 
-                
                 # Convert gene names to lowercase to handle case insensitivity
                 adata.var.index = adata.var.index.str.lower()
                 
@@ -32,7 +30,7 @@ class AnnDataset:
                 anndata_list.append(adata)
         
         if anndata_list:
-            if use_common_genes:
+            if mode=='inter':
                 # Find common genes across all datasets
                 common_genes = set(anndata_list[0].var.index)
                 for adata in anndata_list[1:]:
@@ -41,20 +39,39 @@ class AnnDataset:
                 # Filter each AnnData to include only the common genes
                 anndata_list = [adata[:, list(common_genes)] for adata in anndata_list]
             
-            combined_adata = anndata.concat(
-                anndata_list, 
-                axis=0,
-                join='inner', 
-                label='slide_id', 
-                keys=[adata.obs['slide_id'][0] for adata in anndata_list],
-                pairwise=True
-            )
-        
+            if mode=='inter':
+                combined_adata = anndata.concat(
+                    anndata_list, 
+                    axis=0,
+                    join='inner', 
+                    label='slide_id', 
+                    keys=[adata.obs['slide_id'][0] for adata in anndata_list],
+                    pairwise=True
+                )
+                return combined_adata
+            else:
+                # Group by gene panels
+                gene_panels = {}
+                for adata in anndata_list:
+                    genes = tuple(sorted(adata.var.index))
+                    if genes not in gene_panels:
+                        gene_panels[genes] = []
+                    gene_panels[genes].append(adata)
+                
+                # Concatenate within each group
+                concatenated_adatas = []
+                for genes, adatas in gene_panels.items():
+                    
+                    concatenated_adata = anndata.concat(
+                        adatas,
+                        axis=0,
+                        join='inner', 
+                        label='slide_id', 
+                        keys=[adata.obs['slide_id'][0] for adata in adatas],
+                        pairwise=True
+                    )
+                    concatenated_adatas.append(concatenated_adata)
+                
+                return concatenated_adatas
         else:
-            combined_adata = None
-        
-        if multi_slide:
-            return combined_adata
-        else:
-            return anndata_list_original
-
+            return None

@@ -92,10 +92,10 @@ class Graphst():
         
         fix_seed(self.random_seed)
 
-        if batch_key:
-            list_adatas = [self.adata[self.adata.obs[batch_key] == b].copy() for b in self.adata.obs[batch_key].unique()]
-        else:
+        if batch_key is None:
             list_adatas = [self.adata]
+        else:
+            list_adatas = [self.adata[self.adata.obs[batch_key] == b].copy() for b in self.adata.obs[batch_key].unique()]
         
         for adata in list_adatas:
             if 'highly_variable' not in adata.var.keys():

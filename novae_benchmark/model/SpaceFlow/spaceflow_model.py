@@ -11,6 +11,7 @@ import networkx as nx
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from scipy.spatial import distance_matrix
+from scipy.sparse import block_diag
 from torch_geometric.nn import GCNConv, DeepGraphInfomax
 from sklearn.neighbors import kneighbors_graph
 
@@ -115,7 +116,7 @@ class Spaceflow(object):
         plt.subplots_adjust(wspace=wspace, hspace=hspace, left=left, right=right, bottom=bottom, top=top)
         return fig, axs
 
-    def preprocessing_data(self, n_top_genes=None, n_neighbors=10):
+    def preprocessing_data(self, n_top_genes=None, n_neighbors=10, batch_key=None):
         """
         Preprocessing the spatial transcriptomics data
         Generates:  `self.adata_filtered`: (n_cells, n_locations) `numpy.ndarray`
@@ -131,19 +132,28 @@ class Spaceflow(object):
         :return: a geometry-aware spatial proximity graph of the spatial spots of cells
         :rtype: class:`scipy.sparse.csr_matrix`
         """
-        adata = self.adata
-        if not adata:
+        adatas = self.adata
+        sc.pp.normalize_total(adatas, target_sum=1e4)
+        sc.pp.log1p(adatas)
+        sc.pp.highly_variable_genes(adatas, n_top_genes=n_top_genes, flavor='cell_ranger', subset=True)
+        sc.pp.pca(adatas)
+        if batch_key is None:
+            list_adatas = [adatas]
+        else:
+            list_adatas = [adatas[self.adata.obs[batch_key] == b].copy() for b in adatas.obs[batch_key].unique()]
+        if not adatas:
             print("No annData object found, please run SpaceFlow.SpaceFlow(expr_data, spatial_locs) first!")
             return
-        sc.pp.normalize_total(adata, target_sum=1e4)
-        sc.pp.log1p(adata)
-        sc.pp.highly_variable_genes(adata, n_top_genes=n_top_genes, flavor='cell_ranger', subset=True)
-        sc.pp.pca(adata)
-        spatial_locs = adata.obsm['spatial']
-        spatial_graph = self.graph_alpha(spatial_locs, n_neighbors=n_neighbors)
+        spatial_graphs = []
+        adatas_preprocessed = []
+        for adata in list_adatas:
+            spatial_locs = adata.obsm['spatial']
+            spatial_graphs.append(self.graph_alpha(spatial_locs, n_neighbors=n_neighbors))
+            adatas_preprocessed.append(adata)
 
-        self.adata_preprocessed = adata
-        self.spatial_graph = spatial_graph
+
+        self.adata_preprocessed = sc.concat(adatas_preprocessed)
+        self.spatial_graph = block_diag(spatial_graphs, format='csr')
 
     def graph_alpha(self, spatial_locs, n_neighbors=10):
         """
