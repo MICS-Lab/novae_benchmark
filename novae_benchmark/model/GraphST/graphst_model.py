@@ -29,7 +29,7 @@ class Graphst():
         lamda1 = 10,
         lamda2 = 1,
         datatype = '10X',
-        batch_key='slide_name'
+        batch_key=None,
         ):
         '''\
 
@@ -92,7 +92,10 @@ class Graphst():
         
         fix_seed(self.random_seed)
 
-        list_adatas = [self.adata[self.adata.obs[batch_key] == b].copy() for b in self.adata.obs[batch_key].unique()]
+        if batch_key:
+            list_adatas = [self.adata[self.adata.obs[batch_key] == b].copy() for b in self.adata.obs[batch_key].unique()]
+        else:
+            list_adatas = [self.adata]
         
         for adata in list_adatas:
             if 'highly_variable' not in adata.var.keys():

@@ -4,7 +4,7 @@ import scanpy as sc
 from anndata import AnnData
 from sklearn.decomposition import PCA
 
-from . import SEDR, STAGATE, SpaceFlow, cluster_utils, GraphST
+from . import SEDR, STAGATE, SpaceFlow, cluster_utils, eval_utils, GraphST
 
 DEFAULT_N_CLUSTERS = 7
 DEFAULT_RADIUS_CLUSTERS = 50
@@ -32,14 +32,18 @@ class Model:
         """
         raise NotImplementedError
 
-    def cluster(self, adata: AnnData, n_clusters: int = DEFAULT_N_CLUSTERS,
-                radius : int = DEFAULT_RADIUS_CLUSTERS, method: str = "mclust", 
-                pca: bool = False):
+    def cluster(self, adata: AnnData, n_clusters: int = DEFAULT_N_CLUSTERS, 
+                method: str = "mclust", pca: bool = False):
         """
         Clusters the data. The output should be stored in `adata.obs[self.model_name]`.
         """
         cluster_utils.clustering(adata=adata, model_name=self.model_name, 
-                                 n_clusters=n_clusters, method=method, radius=radius, pca=pca)
+                                 n_clusters=n_clusters, method=method, pca=pca)
+        
+    def evaluate(self, adata: AnnData, batch_key: str | None = None, n_clusters: int = DEFAULT_N_CLUSTERS,
+                 n_top_genes: int =3):
+        self.model_performances = eval_utils.evaluate_latent(adatas=adata, obs_key=self.model_name, slide_key=batch_key,
+                                          n_classes=n_clusters, n_top_genes=n_top_genes)
 
 
     def __call__(
@@ -49,6 +53,7 @@ class Model:
         batch_key: str | None = None,
         device: str = "cpu",
         fast_dev_run: bool = False,
+        multi_slide:bool = False,
     ) -> tuple[np.ndarray, pd.Series]:
         """
         Runs all steps, i.e preprocessing -> training -> inference -> clustering.
@@ -56,9 +61,19 @@ class Model:
         Returns:
             A numpy array of shape (n_cells, hidden_dim) and a pandas Series with the cluster labels.
         """
+        print("--------------- {}: Preprocessing Started-------------------".format(self.model_name))
         self.preprocess(adata)
+        print("--------------- {}: Preprocessing Finished-------------------".format(self.model_name))
+        print("--------------- {}: Training Started-------------------".format(self.model_name))
         self.train(adata, batch_key=batch_key, device=device, fast_dev_run=fast_dev_run)
+        print("--------------- {}: Training Finished-------------------".format(self.model_name))
+        print("--------------- {}: Clustering Started-------------------".format(self.model_name))
         self.cluster(adata, n_clusters)
+        print("--------------- {}: Clustering Finished-------------------".format(self.model_name))
+        self.evaluate(adata, batch_key, n_clusters)
+        print("--------------- {}: Evaluation completed-------------------".format(self.model_name))
+        print(self.model_performances)
+
 
         adata.obs[self.model_name] = adata.obs[self.model_name].astype("category")
 
@@ -88,10 +103,6 @@ class STAGATEModel(Model):
             adata, key_added=self.model_name, device=device, n_epochs=2 if fast_dev_run else 1000
         )
 
-    #def cluster(self, adata: AnnData, n_clusters: int = DEFAULT_N_CLUSTERS):
-    #    STAGATE.mclust_R(adata, used_obsm=self.model_name, num_cluster=n_clusters)
-    #    adata.obs[self.model_name] = adata.obs["mclust"]
-
 
 class SEDRModel(Model):
     def preprocess(self, adata: AnnData):
@@ -102,8 +113,6 @@ class SEDRModel(Model):
         adata_X = PCA(n_components=200, random_state=42).fit_transform(adata.X)
         adata.obsm["X_pca"] = adata_X
 
-    #def cluster(self, adata: AnnData, n_clusters: int):
-    #    SEDR.mclust_R(adata, n_clusters, use_rep=self.model_name, key_added=self.model_name)
 
     def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
         graph_dict = SEDR.graph_construction(adata, 6)
@@ -135,7 +144,6 @@ class GraphSTModel(Model):
     def train(self, adata: AnnData, batch_key: str | None = None, device: str = "cpu", fast_dev_run: bool = False):
         graphst_net = GraphST.Graphst(adata=adata, device=device, epochs=2 if fast_dev_run else 1000)
         adata = graphst_net.train()
-    
 
 
 MODEL_DICT = {
