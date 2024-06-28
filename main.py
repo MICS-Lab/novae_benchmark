@@ -27,7 +27,7 @@ if __name__ == "__main__":
     for tissue in config['dataset']['tissues']:
         print('----- ', tissue, '\n')
 
-        dataset = AnnDataset(data_dir='../../data/spatial', metadata_filename='metadata_2024_06_21.csv')
+        dataset = AnnDataset(data_dir=config['dataset']['data_dir'], metadata_filename=config['dataset']['metadata_file'])
         adataset = dataset.load_data(tissue_types=[tissue], mode=config['dataset']['mode'])
 
         print("------------ Dataset Loaded ! ----------------\n")

@@ -1,0 +1,17 @@
+dataset:
+  data_dir: '/gpfs/workdir/shared/prime/spatial/all/'
+  metadata_file: 'metadata_2024_06_21.csv'
+  tissues: ['breast']
+  mode: 'union'
+
+params:
+  model_names: ['STAGATE', 'SEDR', 'SpaceFlow', 'GraphST']
+  hidden_dim: 64
+  batch_key: 'slide_id'
+  device: 'cuda'
+  fast_dev_run: True
+  n_clusters: 7
+
+  
+
+

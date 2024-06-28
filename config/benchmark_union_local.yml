@@ -1,6 +1,6 @@
 dataset:
-  data_dir: '../../data/spatial'
-  metadata-file: 'metadata_2024_06_21.csv'
+  data_dir: './../data/spatial/'
+  metadata_file: 'metadata_2024_06_21.csv'
   tissues: ['ovarian']
   mode: 'union'
 
