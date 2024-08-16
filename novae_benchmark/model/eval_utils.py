@@ -63,23 +63,63 @@ def fide_score(adata: AnnData, obs_key: str, n_classes: int | None = None) -> fl
     return np.pad(f1_scores, (0, n_classes - len(f1_scores))).mean()
 
 
+# def jensen_shannon_divergence(adatas: AnnData | list[AnnData], obs_key: str, slide_key: str = None) -> float:
+#     """Jensen-Shannon divergence (JSD) over all slides
+
+#     Args:
+#         adatas: One or a list of AnnData object(s)
+#         {obs_key}
+#         {slide_key}
+
+#     Returns:
+#         The Jensen-Shannon divergence score for all slides
+#     """
+#     distributions = [
+#         adata.obs[obs_key].value_counts(sort=False).values
+#         for adata in _iter_uid(adatas, slide_key=slide_key, obs_key=obs_key)
+#     ]
+
+#     return _jensen_shannon_divergence(np.array(distributions))
+
+import numpy as np
+
 def jensen_shannon_divergence(adatas: AnnData | list[AnnData], obs_key: str, slide_key: str = None) -> float:
     """Jensen-Shannon divergence (JSD) over all slides
 
     Args:
         adatas: One or a list of AnnData object(s)
-        {obs_key}
-        {slide_key}
+        obs_key: The key in the `obs` DataFrame for the categorical variable of interest
+        slide_key: The key in the `obs` DataFrame for the slide or batch variable
 
     Returns:
         The Jensen-Shannon divergence score for all slides
     """
-    distributions = [
-        adata.obs[obs_key].value_counts(sort=False).values
-        for adata in _iter_uid(adatas, slide_key=slide_key, obs_key=obs_key)
-    ]
+    # Identify all possible categories across all AnnData objects
+    all_categories = set()
+    for adata in _iter_uid(adatas, slide_key=slide_key, obs_key=obs_key):
+        all_categories.update(adata.obs[obs_key].cat.categories)
 
-    return _jensen_shannon_divergence(np.array(distributions))
+    # Convert categories set to a sorted list
+    all_categories = sorted(all_categories)
+
+    # Create the distributions, ensuring all categories are represented
+    distributions = []
+    for adata in _iter_uid(adatas, slide_key=slide_key, obs_key=obs_key):
+        # Get the value counts, using the full list of categories
+        value_counts = adata.obs[obs_key].value_counts(sort=False)
+        distribution = np.zeros(len(all_categories))
+        
+        for i, category in enumerate(all_categories):
+            if category in value_counts:
+                distribution[i] = value_counts[category]
+        
+        distributions.append(distribution)
+    
+    # Convert to numpy array
+    distributions = np.array(distributions)
+
+    return _jensen_shannon_divergence(distributions)
+
 
 
 def mean_svg_score(adata: AnnData | list[AnnData], obs_key: str, slide_key: str = None, n_top_genes: int = 3) -> float:
@@ -167,7 +207,7 @@ def evaluate_latent(adatas: AnnData | list[AnnData],
     eval_dt = {}
     eval_dt["FIDE"] = mean_fide_score(adatas=adatas, obs_key=obs_key, slide_key=slide_key, n_classes=n_classes)
     eval_dt["JSD"] = jensen_shannon_divergence(adatas=adatas, obs_key=obs_key, slide_key=slide_key)
-    eval_dt["SVG"] = mean_svg_score(adata=adatas, obs_key=obs_key, slide_key=slide_key, n_top_genes=n_top_genes)
+    #eval_dt["SVG"] = mean_svg_score(adata=adatas, obs_key=obs_key, slide_key=slide_key, n_top_genes=n_top_genes)
     return eval_dt
 
 
