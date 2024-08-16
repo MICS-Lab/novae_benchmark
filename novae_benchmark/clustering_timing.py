@@ -1,14 +1,8 @@
 import time
 
-import igraph  # so that not count in leiden timing
-import leidenalg  # so that not count in leiden timing
-import novae
+import anndata
 import numpy as np
 import pandas as pd
-import rpy2.robjects as robjects
-import rpy2.robjects.numpy2ri
-
-rpy2.robjects.numpy2ri.activate()
 import scanpy as sc
 from anndata import AnnData
 
@@ -33,7 +27,13 @@ def time_leiden(adata: AnnData):
 
 @timing
 def time_mclust(adata: AnnData):
+    import rpy2.robjects as robjects
+
     robjects.r.library("mclust")
+
+    import rpy2.robjects.numpy2ri
+
+    rpy2.robjects.numpy2ri.activate()
 
     r_random_seed = robjects.r["set.seed"]
     r_random_seed(0)
@@ -139,7 +139,7 @@ def main():
     mclust_times = []
 
     for xmax in [2_000, 3_000, 4_500, 7_000, 10_500, 15_000, 22_500]:
-        adata = novae.utils.dummy_dataset(n_panels=1, n_drop=0, n_vars=64, n_domains=10, xmax=xmax)[0]
+        adata = dummy_dataset(n_panels=1, n_drop=0, n_vars=64, n_domains=10, xmax=xmax)[0]
 
         n_obs_list.append(adata.n_obs)
         leiden_times.append(time_leiden(adata))
