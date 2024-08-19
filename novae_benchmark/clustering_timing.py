@@ -143,7 +143,7 @@ def main():
 
         n_obs_list.append(adata.n_obs)
         leiden_times.append(time_leiden(adata))
-        # mclust_times.append(time_mclust(adata))
+        mclust_times.append(time_mclust(adata))
 
         print(f"{xmax=}")
         print(f"{n_obs_list=}")
