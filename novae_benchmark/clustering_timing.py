@@ -140,11 +140,24 @@ def main():
     mclust_times = []
 
     for xmax in [2_000, 3_000, 4_500, 7_000, 10_500, 15_000, 22_500]:
-        adata = dummy_dataset(n_panels=1, n_drop=0, n_vars=64, n_domains=10, xmax=xmax)[0]
+        adata = dummy_dataset(
+            n_panels=1,
+            n_drop=0,
+            n_vars=64,
+            n_domains=10,
+            xmax=xmax,
+            slide_shift_lambda=0,
+            panel_shift_lambda=0,
+            domain_shift_lambda=1,
+        )[0]
 
         n_obs_list.append(adata.n_obs)
         leiden_times.append(time_leiden(adata))
-        mclust_times.append(time_mclust(adata))
+        try:
+            mclust_times.append(time_mclust(adata))
+        except:
+            print(f"mclust failed for {xmax=}")
+            mclust_times.append(None)
 
         print(f"{xmax=}")
         print(f"{n_obs_list=}")
