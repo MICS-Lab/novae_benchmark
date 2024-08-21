@@ -1,8 +1,6 @@
 import time
 
-import anndata
 import numpy as np
-import pandas as pd
 import scanpy as sc
 from anndata import AnnData
 
@@ -21,7 +19,7 @@ def timing(func):
 
 @timing
 def time_leiden(adata: AnnData):
-    sc.pp.neighbors(adata)
+    sc.pp.neighbors(adata, use_rep="SpaceFlow")
     sc.tl.leiden(adata)
 
 
@@ -39,127 +37,41 @@ def time_mclust(adata: AnnData):
     r_random_seed(0)
     rmclust = robjects.r["Mclust"]
 
-    res = rmclust(rpy2.robjects.numpy2ri.numpy2rpy(adata.X), 10, "EEE")
+    res = rmclust(rpy2.robjects.numpy2ri.numpy2rpy(adata.obsm["SpaceFlow"].values), 7, "EEE")
     mclust_res = np.array(res[-2])
 
     adata.obs["mclust"] = mclust_res
     adata.obs["mclust"] = adata.obs["mclust"].astype("int").astype("category")
 
 
-def dummy_dataset(
-    n_panels: int = 3,
-    n_domains: int = 4,
-    n_slides_per_panel: int = 1,
-    xmax: int = 500,
-    n_vars: int = 100,
-    n_drop: int = 20,
-    step: int = 20,
-    panel_shift_lambda: float = 0.25,
-    slide_shift_lambda: float = 0.5,
-    domain_shift_lambda: float = 0.25,
-    slide_ids_unique: bool = True,
-) -> list[AnnData]:
-    """Creates a dummy dataset, useful for debugging or testing.
-
-    Args:
-        n_panels: Number of panels. Each panel will correspond to one output `AnnData` object.
-        n_domains: Number of domains.
-        n_slides_per_panel: Number of slides per panel.
-        xmax: Maximum value for the spatial coordinates (the larger, the more cells).
-        n_vars: Maxmium number of genes per panel.
-        n_drop: Number of genes that are randomly removed for each `AnnData` object. It will create non-identical panels.
-        step: Step between cells in their spatial coordinates.
-        panel_shift_lambda: Lambda used in the exponential law for each panel.
-        slide_shift_lambda: Lambda used in the exponential law for each slide.
-        domain_shift_lambda: Lambda used in the exponential law for each domain.
-        slide_ids_unique: Whether to ensure that slide ids are unique.
-
-    Returns:
-        A list of `AnnData` objects representing a valid `Novae` dataset.
-    """
-    assert n_vars - n_drop - n_panels > 2
-
-    spatial = np.mgrid[-xmax:xmax:step, -xmax:xmax:step].reshape(2, -1).T
-    spatial = spatial[(spatial**2).sum(1) <= xmax**2]
-    n_obs = len(spatial)
-
-    int_domains = (np.sqrt((spatial**2).sum(1)) // (xmax / n_domains + 1e-8)).astype(int)
-    domain = "domain_" + int_domains.astype(str).astype(object)
-
-    adatas = []
-
-    var_names = np.array([f"g{i}" for i in range(n_vars)])
-
-    lambdas_per_domain = np.random.exponential(1, size=(n_domains, n_vars))
-
-    for panel_index in range(n_panels):
-        adatas_panel = []
-        panel_shift = np.random.exponential(panel_shift_lambda, size=n_vars)
-
-        for slide_index in range(n_slides_per_panel):
-            slide_shift = np.random.exponential(slide_shift_lambda, size=n_vars)
-
-            adata = AnnData(
-                np.zeros((n_obs, n_vars)),
-                obsm={"spatial": spatial + panel_index + slide_index},  # ensure the locs are different
-                obs=pd.DataFrame({"domain": domain}, index=[f"cell_{i}" for i in range(spatial.shape[0])]),
-            )
-
-            adata.var_names = var_names
-            adata.obs_names = [f"c_{panel_index}_{slide_index}_{i}" for i in range(adata.n_obs)]
-
-            slide_key = f"slide_{panel_index}_{slide_index}" if slide_ids_unique else f"slide_{slide_index}"
-            adata.obs["slide_key"] = slide_key
-
-            for i in range(n_domains):
-                condition = adata.obs["domain"] == "domain_" + str(i)
-                n_obs_domain = condition.sum()
-
-                domain_shift = np.random.exponential(domain_shift_lambda, size=n_vars)
-                lambdas = lambdas_per_domain[i] + domain_shift + slide_shift + panel_shift
-                X_domain = np.random.exponential(lambdas, size=(n_obs_domain, n_vars))
-                adata.X[condition] = X_domain.clip(0, 9)  # values should look like log1p values
-
-            if n_drop:
-                size = n_vars - n_drop - panel_index  # different number of genes
-                var_indices = np.random.choice(n_vars, size=size, replace=False)
-                adata = adata[:, var_indices].copy()
-
-            adatas_panel.append(adata[: -1 - panel_index - slide_index].copy())  # different number of cells
-
-        adata_panel = anndata.concat(adatas_panel)
-
-        adatas.append(adata_panel)
-
-    return adatas
-
-
 def main():
+    # adata_full = sc.read_h5ad("/Users/quentinblampey/data/sandbox/colon_SpaceFlow_harmonized_30k.h5ad")
+    adata_full = sc.read_h5ad("/gpfs/workdir/shared/prime/spatial/embeddings/colon_SpaceFlow_harmonized.h5ad")
+
     n_obs_list = []
     leiden_times = []
     mclust_times = []
 
-    for xmax in [2_000, 3_000, 4_500, 7_000, 10_500, 15_000, 22_500]:
-        adata = dummy_dataset(
-            n_panels=1,
-            n_drop=0,
-            n_vars=64,
-            n_domains=10,
-            xmax=xmax,
-            slide_shift_lambda=0,
-            panel_shift_lambda=0,
-            domain_shift_lambda=1,
-        )[0]
+    for n_obs in [25_000, 100_000, 400_000, 1_600_000, 6_400_000]:
+        if n_obs == adata_full.n_obs:
+            adata = adata_full.copy()
+        elif n_obs < adata_full.n_obs:
+            adata = sc.pp.subsample(adata_full, n_obs=n_obs, copy=True)
+        else:
+            locs = np.random.choice(adata_full.obs.index, n_obs, replace=True)
+            adata = adata_full[locs].copy()
+            noise = np.random.randn(*adata.obsm["SpaceFlow"].shape) / 50
+            adata.obsm["SpaceFlow"] = adata.obsm["SpaceFlow"] + noise
 
         n_obs_list.append(adata.n_obs)
         leiden_times.append(time_leiden(adata))
         try:
             mclust_times.append(time_mclust(adata))
-        except:
-            print(f"mclust failed for {xmax=}")
+        except Exception as e:
+            print(f"mclust failed for {n_obs=}")
+            print("Error:", e)
             mclust_times.append(None)
 
-        print(f"{xmax=}")
         print(f"{n_obs_list=}")
         print(f"{leiden_times=}")
         print(f"{mclust_times=}")
