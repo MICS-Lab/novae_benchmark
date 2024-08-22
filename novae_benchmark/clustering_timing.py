@@ -52,7 +52,8 @@ def main():
     leiden_times = []
     mclust_times = []
 
-    for n_obs in [25_000, 100_000, 400_000, 1_600_000, 6_400_000]:
+    # for n_obs in [25_000, 100_000, 400_000, 1_600_000, 6_400_000]:
+    for n_obs in [1_600_000, 6_400_000]:
         if n_obs == adata_full.n_obs:
             adata = adata_full.copy()
         elif n_obs < adata_full.n_obs:
@@ -65,12 +66,12 @@ def main():
 
         n_obs_list.append(adata.n_obs)
         leiden_times.append(time_leiden(adata))
-        try:
-            mclust_times.append(time_mclust(adata))
-        except Exception as e:
-            print(f"mclust failed for {n_obs=}")
-            print("Error:", e)
-            mclust_times.append(None)
+        # try:
+        #     mclust_times.append(time_mclust(adata))
+        # except Exception as e:
+        #     print(f"mclust failed for {n_obs=}")
+        #     print("Error:", e)
+        #     mclust_times.append(None)
 
         print(f"{n_obs_list=}")
         print(f"{leiden_times=}")
