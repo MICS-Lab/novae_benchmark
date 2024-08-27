@@ -1,3 +1,4 @@
+import random
 import time
 from pathlib import Path
 
@@ -5,6 +6,9 @@ import matplotlib.pyplot as plt
 import scanpy as sc
 import seaborn as sns
 from anndata import AnnData
+
+run_ID = f"ID_{random.randint(1, 100_000)}"
+print(f"Run ID: {run_ID}")
 
 
 def timing(func):
@@ -33,6 +37,8 @@ def compute_and_save_umap(adata: AnnData, res_path: Path):
     sc.pp.neighbors(adata, use_rep="novae_latent_corrected")
     sc.tl.umap(adata)
 
+    adata.write_h5ad(res_path / f"adata_{adata.n_obs}_{run_ID}.h5ad")
+
     colors = []
     for key in ["domain", "tissue", "technology", "novae_domains_15", "novae_domains_20", "novae_domains_25"]:
         if key in adata.obs:
@@ -47,7 +53,7 @@ def compute_and_save_umap(adata: AnnData, res_path: Path):
 def main():
     # data_path = Path("/Users/quentinblampey/dev/novae/data/results/dry-wood-40")
     # res_path = Path("/Users/quentinblampey/dev/novae_benchmark/figures")
-    data_path = Path("/gpfs/workdir/blampeyq/novae/data/results/zany-night-17")
+    data_path = Path("/gpfs/workdir/blampeyq/novae/data/results/gallant-water-184")
     res_path = Path("/gpfs/workdir/blampeyq/novae_benchmark/figures")
 
     adata_full = sc.read_h5ad(data_path / "adata_conc.h5ad")
