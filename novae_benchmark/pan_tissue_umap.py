@@ -60,13 +60,7 @@ def main():
 
     print("adata:", adata_full)
 
-    for n_obs in [5_000_000, None]:
-        if n_obs is not None and n_obs < adata_full.n_obs:
-            adata = sc.pp.subsample(adata_full, n_obs=n_obs, copy=True)
-        else:
-            adata = adata_full
-
-        compute_and_save_umap(adata, res_path)
+    compute_and_save_umap(adata_full, res_path)
 
 
 if __name__ == "__main__":
