@@ -2,7 +2,7 @@
 #SBATCH --job-name=novae
 #SBATCH --output=/gpfs/workdir/blampeyq/.jobs_outputs/%j
 #SBATCH --mem=128G
-#SBATCH --time=24:00:00
+#SBATCH --time=7-00:00:00
 #SBATCH --cpus-per-task=2
 #SBATCH --partition=cpu_long
 

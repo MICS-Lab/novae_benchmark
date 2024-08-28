@@ -60,7 +60,7 @@ def main():
 
     print("adata:", adata_full)
 
-    for n_obs in [1_000, 1_000_000, 10_000_000, None]:
+    for n_obs in [5_000_000, None]:
         if n_obs is not None and n_obs < adata_full.n_obs:
             adata = sc.pp.subsample(adata_full, n_obs=n_obs, copy=True)
         else:
