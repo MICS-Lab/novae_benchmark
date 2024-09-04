@@ -61,7 +61,7 @@ def compute_and_save_umap(adata: AnnData, res_path: Path):
 def main():
     # data_path = Path("/Users/quentinblampey/dev/novae/data/results/dry-wood-40")
     # res_path = Path("/Users/quentinblampey/dev/novae_benchmark/figures")
-    data_path = Path("/gpfs/workdir/blampeyq/novae/data/results/still-surf-209")
+    data_path = Path("/gpfs/workdir/blampeyq/novae/data/results/clean-sun-207")
     res_path = Path("/gpfs/workdir/blampeyq/novae_benchmark/figures")
 
     adata_full = sc.read_h5ad(data_path / "adata_conc.h5ad")
