@@ -2,7 +2,7 @@
 
 ⚠️ **WARNING:** This repository is used to benchmark `novae` for the manuscript. It does **not** contain the code of novae, only the benchmark.
 
-‼️ See the [official `novae` repository](https://github.com/MICS-Lab/novae).
+‼️ See the [official `novae` repository](https://github.com/prism-oncology/novae).
 
 ## Setup
 
